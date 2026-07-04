@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useLiveQuery } from 'dexie-react-hooks';
 import dayjs from 'dayjs';
@@ -7,10 +8,16 @@ import MoodCard from '../components/MoodCard';
 import QuickAddBar from '../components/QuickAddBar';
 import StateMarker, { nextState } from '../components/StateMarker';
 import ReorderableList, { GripHandle } from '../components/ReorderableList';
+import TaskActionsDialog from '../components/TaskActionsDialog';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import TagChips from '../components/TagChips';
+import { useLongPress } from '../components/useLongPress';
 import type { Task } from '../db/schemas';
 
 export default function Home() {
   const todayStr = dayjs().format('YYYY-MM-DD');
+  const [actionsTarget, setActionsTarget] = useState<Task | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
 
   const latestMoodToday = useLiveQuery(async () => {
     const entries = await db.moodEntries.where('dateISO').equals(todayStr).toArray();
@@ -35,6 +42,7 @@ export default function Home() {
       movedToTodayAt: now,
       completedAt: null,
       order: Date.now(),
+      tags: [],
     });
   };
 
@@ -57,6 +65,18 @@ export default function Home() {
     } else {
       await db.tasks.update(task.id, { state: newState, completedAt: null });
     }
+  };
+
+  const saveTags = async (tags: string[]) => {
+    if (actionsTarget?.id == null) return;
+    await db.tasks.update(actionsTarget.id, { tags });
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTarget?.id != null) {
+      await db.tasks.delete(deleteTarget.id);
+    }
+    setDeleteTarget(null);
   };
 
   return (
@@ -103,50 +123,78 @@ export default function Home() {
             items={todayTasks}
             onReorder={reorderToday}
             renderItem={(task, dragHandleProps) => (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  bgcolor: COLORS.surface,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '14px',
-                  p: 1.75,
-                }}
-              >
-                <StateMarker state={task.state} onClick={() => cycleState(task)} />
-                <Typography
-                  sx={{
-                    flex: 1,
-                    fontSize: 14,
-                    textDecoration: task.state === 'done' ? 'line-through' : 'none',
-                    color: task.state === 'done' ? COLORS.textFaint : COLORS.text,
-                  }}
-                >
-                  {task.text}
-                </Typography>
-                {task.origin === 'someday' && (
-                  <Box
-                    sx={{
-                      fontSize: 10,
-                      color: COLORS.textFaint,
-                      bgcolor: COLORS.surfaceRaised,
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: '100px',
-                      px: 1,
-                      py: 0.375,
-                      flexShrink: 0,
-                    }}
-                  >
-                    Someday
-                  </Box>
-                )}
-                <GripHandle {...dragHandleProps} />
-              </Box>
+              <TodayRow
+                task={task}
+                dragHandleProps={dragHandleProps}
+                onCycleState={() => cycleState(task)}
+                onLongPress={() => setActionsTarget(task)}
+              />
             )}
           />
         )}
       </Box>
+
+      <TaskActionsDialog
+        open={!!actionsTarget}
+        task={actionsTarget}
+        onClose={() => setActionsTarget(null)}
+        onSaveTags={saveTags}
+        onRequestDelete={() => setDeleteTarget(actionsTarget)}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        itemText={deleteTarget?.text ?? ''}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
+    </Box>
+  );
+}
+
+function TodayRow({
+  task,
+  dragHandleProps,
+  onCycleState,
+  onLongPress,
+}: {
+  task: Task;
+  dragHandleProps: { onPointerDown: (e: React.PointerEvent) => void };
+  onCycleState: () => void;
+  onLongPress: () => void;
+}) {
+  const longPress = useLongPress(onLongPress);
+
+  return (
+    <Box
+      onPointerDown={longPress.onPointerDown}
+      onPointerUp={longPress.onPointerUp}
+      onPointerLeave={longPress.onPointerLeave}
+      onPointerCancel={longPress.onPointerCancel}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        bgcolor: COLORS.surface,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: '14px',
+        p: 1.75,
+      }}
+    >
+      <StateMarker state={task.state} onClick={onCycleState} />
+      <Box sx={{ flex: 1 }}>
+        <Typography
+          sx={{
+            fontSize: 14,
+            textDecoration: task.state === 'done' ? 'line-through' : 'none',
+            color: task.state === 'done' ? COLORS.textFaint : COLORS.text,
+          }}
+        >
+          {task.text}
+        </Typography>
+        <TagChips tags={task.tags} />
+      </Box>
+      <GripHandle {...dragHandleProps} />
     </Box>
   );
 }

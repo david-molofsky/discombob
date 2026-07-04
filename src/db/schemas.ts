@@ -21,8 +21,17 @@ export const TaskSchema = z.object({
   movedToTodayAt: z.string().nullable().optional(),
   completedAt: z.string().nullable().optional(),
   order: z.number(), // manual sort position within its current location
+  tags: z.array(z.string()).optional().default([]), // tag names; not indexed (no multiEntry, iOS Safari)
 });
 export type Task = z.infer<typeof TaskSchema>;
+
+export const DEFAULT_TAGS = ['Work', 'Home', 'Errands', 'Health'];
+
+export const CustomTagSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1),
+});
+export type CustomTag = z.infer<typeof CustomTagSchema>;
 
 export const MOOD_SCALE = [
   { value: 1, emoji: '😡', label: 'Awful' },

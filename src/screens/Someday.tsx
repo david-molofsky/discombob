@@ -9,8 +9,10 @@ import { db } from '../db/db';
 import { COLORS } from '../theme/theme';
 import QuickAddBar from '../components/QuickAddBar';
 import SwipeableItem from '../components/SwipeableItem';
-import StateMarker from '../components/StateMarker';
+import StateMarker, { nextState } from '../components/StateMarker';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import TaskActionsDialog from '../components/TaskActionsDialog';
+import TagChips from '../components/TagChips';
 import ReorderableList, { GripHandle } from '../components/ReorderableList';
 import type { Task } from '../db/schemas';
 
@@ -19,6 +21,7 @@ type Tab = 'todo' | 'today' | 'completed';
 export default function Someday() {
   const [tab, setTab] = useState<Tab>('todo');
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  const [actionsTarget, setActionsTarget] = useState<Task | null>(null);
 
   const todoItems = useLiveQuery(async () => {
     const items = await db.tasks.where('location').equals('someday_todo').toArray();
@@ -48,6 +51,7 @@ export default function Someday() {
       movedToTodayAt: null,
       completedAt: null,
       order: Date.now(),
+      tags: [],
     });
   };
 
@@ -75,10 +79,30 @@ export default function Someday() {
       location: 'someday_todo',
       movedToTodayAt: null,
       state: 'not_started',
+      completedAt: null,
     });
   };
 
+  const cycleTodayState = async (task: Task) => {
+    if (task.id == null) return;
+    const newState = nextState(task.state);
+    if (newState === 'done') {
+      await db.tasks.update(task.id, {
+        state: 'done',
+        location: 'someday_completed',
+        completedAt: new Date().toISOString(),
+      });
+    } else {
+      await db.tasks.update(task.id, { state: newState, completedAt: null });
+    }
+  };
+
   const reorder = (draggedId: number, newOrder: number) => db.tasks.update(draggedId, { order: newOrder });
+
+  const saveTags = async (tags: string[]) => {
+    if (actionsTarget?.id == null) return;
+    await db.tasks.update(actionsTarget.id, { tags });
+  };
 
   const confirmDelete = async () => {
     if (deleteTarget?.id != null) {
@@ -159,11 +183,12 @@ export default function Someday() {
                     textColor: '#2B1B04',
                     onCommit: () => markCompleted(item),
                   }}
-                  onLongPress={() => setDeleteTarget(item)}
+                  onLongPress={() => setActionsTarget(item)}
                 >
                   <ItemCard
                     text={item.text}
                     meta={`Captured ${dayjs(item.capturedAt).format('MMM D, h:mm A')}`}
+                    tags={item.tags}
                     dragHandleProps={dragHandleProps}
                   />
                 </SwipeableItem>
@@ -187,6 +212,7 @@ export default function Someday() {
                     textColor: '#14161A',
                     onCommit: () => sendBackToTodo(item),
                   }}
+                  onLongPress={() => setActionsTarget(item)}
                 >
                   <Box
                     sx={{
@@ -199,13 +225,14 @@ export default function Someday() {
                       p: 1.75,
                     }}
                   >
-                    <StateMarker state={item.state} />
+                    <StateMarker state={item.state} onClick={() => cycleTodayState(item)} />
                     <Box sx={{ flex: 1 }}>
                       <Typography sx={{ fontSize: 14 }}>{item.text}</Typography>
                       <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
                         {item.origin === 'someday' ? 'Moved to Today' : 'Added directly'}{' '}
                         {dayjs(item.movedToTodayAt ?? item.capturedAt).format('h:mm A')}
                       </Typography>
+                      <TagChips tags={item.tags} />
                     </Box>
                     <Box
                       sx={{
@@ -236,7 +263,16 @@ export default function Someday() {
               items={completedItems}
               onReorder={reorder}
               renderItem={(item, dragHandleProps) => (
-                <SwipeableItem onLongPress={() => setDeleteTarget(item)}>
+                <SwipeableItem
+                  leftAction={{
+                    label: 'To do',
+                    icon: <ArrowBackIcon sx={{ fontSize: 18 }} />,
+                    color: COLORS.textDim,
+                    textColor: '#14161A',
+                    onCommit: () => sendBackToTodo(item),
+                  }}
+                  onLongPress={() => setActionsTarget(item)}
+                >
                   <Box
                     sx={{
                       display: 'flex',
@@ -255,6 +291,7 @@ export default function Someday() {
                       <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
                         Completed {dayjs(item.completedAt).format('MMM D')}
                       </Typography>
+                      <TagChips tags={item.tags} />
                     </Box>
                     <Box
                       sx={{
@@ -279,6 +316,14 @@ export default function Someday() {
           ))}
       </Box>
 
+      <TaskActionsDialog
+        open={!!actionsTarget}
+        task={actionsTarget}
+        onClose={() => setActionsTarget(null)}
+        onSaveTags={saveTags}
+        onRequestDelete={() => setDeleteTarget(actionsTarget)}
+      />
+
       <DeleteConfirmDialog
         open={!!deleteTarget}
         itemText={deleteTarget?.text ?? ''}
@@ -292,10 +337,12 @@ export default function Someday() {
 function ItemCard({
   text,
   meta,
+  tags,
   dragHandleProps,
 }: {
   text: string;
   meta: string;
+  tags?: string[];
   dragHandleProps: { onPointerDown: (e: React.PointerEvent) => void };
 }) {
   return (
@@ -313,6 +360,7 @@ function ItemCard({
       <Box sx={{ flex: 1 }}>
         <Typography sx={{ fontSize: 14, lineHeight: 1.4 }}>{text}</Typography>
         <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>{meta}</Typography>
+        <TagChips tags={tags} />
       </Box>
       <GripHandle {...dragHandleProps} />
     </Box>
