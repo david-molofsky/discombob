@@ -6,6 +6,7 @@ import { COLORS } from '../theme/theme';
 import MoodCard from '../components/MoodCard';
 import QuickAddBar from '../components/QuickAddBar';
 import StateMarker, { nextState } from '../components/StateMarker';
+import ReorderableList, { GripHandle } from '../components/ReorderableList';
 import type { Task } from '../db/schemas';
 
 export default function Home() {
@@ -19,7 +20,7 @@ export default function Home() {
 
   const todayTasks = useLiveQuery(async () => {
     const tasks = await db.tasks.where('location').equals('today').toArray();
-    tasks.sort((a, b) => (a.capturedAt < b.capturedAt ? -1 : 1));
+    tasks.sort((a, b) => a.order - b.order);
     return tasks;
   }, []);
 
@@ -33,16 +34,29 @@ export default function Home() {
       capturedAt: now,
       movedToTodayAt: now,
       completedAt: null,
+      order: Date.now(),
     });
+  };
+
+  const reorderToday = async (draggedId: number, newOrder: number) => {
+    await db.tasks.update(draggedId, { order: newOrder });
   };
 
   const cycleState = async (task: Task) => {
     if (task.id == null) return;
     const newState = nextState(task.state);
-    await db.tasks.update(task.id, {
-      state: newState,
-      completedAt: newState === 'done' ? new Date().toISOString() : null,
-    });
+    if (newState === 'done') {
+      // Completion is a one-way trip: leave Today entirely and land in the
+      // shared Completed list (Someday's Completed tab), regardless of
+      // whether this task originated in Someday or was added directly here.
+      await db.tasks.update(task.id, {
+        state: 'done',
+        location: 'someday_completed',
+        completedAt: new Date().toISOString(),
+      });
+    } else {
+      await db.tasks.update(task.id, { state: newState, completedAt: null });
+    }
   };
 
   return (
@@ -85,10 +99,11 @@ export default function Home() {
             Add a task above, or triage from Someday.
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-            {todayTasks.map((task) => (
+          <ReorderableList
+            items={todayTasks}
+            onReorder={reorderToday}
+            renderItem={(task, dragHandleProps) => (
               <Box
-                key={task.id}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -126,9 +141,10 @@ export default function Home() {
                     Someday
                   </Box>
                 )}
+                <GripHandle {...dragHandleProps} />
               </Box>
-            ))}
-          </Box>
+            )}
+          />
         )}
       </Box>
     </Box>

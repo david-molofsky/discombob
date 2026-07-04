@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { theme, COLORS } from './theme/theme';
 import { paths } from './routes/paths';
 import BottomNav from './components/BottomNav';
+import UpdateBanner from './components/UpdateBanner';
 import Home from './screens/Home';
 import Someday from './screens/Someday';
 import Trends from './screens/Trends';
@@ -24,6 +25,7 @@ function Shell() {
         maxWidth: 480,
         mx: 'auto',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
       <Routes>
@@ -33,6 +35,7 @@ function Shell() {
         <Route path={paths.moodNew} element={<MoodEntry />} />
       </Routes>
       {showNav && <BottomNav />}
+      <UpdateBanner />
     </Box>
   );
 }

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Box, Typography, Slider, TextField, Button, IconButton } from '@mui/material';
+import { Box, Typography, Slider, TextField, Button, IconButton, InputBase } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import dayjs, { Dayjs } from 'dayjs';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CheckIcon from '@mui/icons-material/Check';
 import { db } from '../db/db';
 import { COLORS } from '../theme/theme';
 import { MOOD_SCALE, DEFAULT_TRIGGERS } from '../db/schemas';
@@ -14,6 +16,23 @@ export default function MoodEntry() {
   const [energy, setEnergy] = useState<number>(50);
   const [triggers, setTriggers] = useState<string[]>([]);
   const [note, setNote] = useState('');
+  const [addingTrigger, setAddingTrigger] = useState(false);
+  const [newTriggerText, setNewTriggerText] = useState('');
+
+  const customTriggers = useLiveQuery(() => db.customTriggers.toArray(), []);
+  const allTriggers = [...DEFAULT_TRIGGERS, ...(customTriggers?.map((t) => t.name) ?? [])];
+
+  const confirmNewTrigger = async () => {
+    const trimmed = newTriggerText.trim();
+    setAddingTrigger(false);
+    setNewTriggerText('');
+    if (!trimmed) return;
+    const alreadyExists = allTriggers.some((t) => t.toLowerCase() === trimmed.toLowerCase());
+    if (!alreadyExists) {
+      await db.customTriggers.add({ name: trimmed });
+    }
+    setTriggers((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+  };
 
   const isToday = date.isSame(dayjs(), 'day');
   const selectedMood = MOOD_SCALE.find((m) => m.value === moodValue)!;
@@ -141,9 +160,65 @@ export default function MoodEntry() {
             </Box>
           </SectionLabel>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {DEFAULT_TRIGGERS.map((t) => (
+            {allTriggers.map((t) => (
               <Chip key={t} label={t} selected={triggers.includes(t)} onClick={() => toggleTrigger(t)} />
             ))}
+            {addingTrigger ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.75,
+                  bgcolor: COLORS.surface,
+                  border: `1px solid ${COLORS.accent}`,
+                  borderRadius: '100px',
+                  pl: 1.75,
+                  pr: 0.75,
+                  py: 0.5,
+                }}
+              >
+                <InputBase
+                  autoFocus
+                  placeholder="Type a trigger..."
+                  value={newTriggerText}
+                  onChange={(e) => setNewTriggerText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmNewTrigger();
+                    if (e.key === 'Escape') {
+                      setAddingTrigger(false);
+                      setNewTriggerText('');
+                    }
+                  }}
+                  sx={{ fontSize: 13, color: COLORS.text, width: 110 }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={confirmNewTrigger}
+                  sx={{ bgcolor: COLORS.accent, color: '#0D2320', '&:hover': { bgcolor: COLORS.accent }, width: 24, height: 24 }}
+                >
+                  <CheckIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            ) : (
+              <Box
+                onClick={() => setAddingTrigger(true)}
+                sx={{
+                  px: 1.75,
+                  py: 1.125,
+                  borderRadius: '100px',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  bgcolor: COLORS.surface,
+                  border: `1px dashed ${COLORS.textFaint}`,
+                  color: COLORS.textFaint,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                }}
+              >
+                + Add
+              </Box>
+            )}
           </Box>
         </Box>
 

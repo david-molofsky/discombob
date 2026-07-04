@@ -20,6 +20,7 @@ export const TaskSchema = z.object({
   capturedAt: z.string(), // ISO timestamp
   movedToTodayAt: z.string().nullable().optional(),
   completedAt: z.string().nullable().optional(),
+  order: z.number(), // manual sort position within its current location
 });
 export type Task = z.infer<typeof TaskSchema>;
 
@@ -40,6 +41,12 @@ export const DEFAULT_TRIGGERS = [
   'Social',
   'Skipped meal',
 ];
+
+export const CustomTriggerSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1),
+});
+export type CustomTrigger = z.infer<typeof CustomTriggerSchema>;
 
 export const MoodEntrySchema = z.object({
   id: z.number().optional(),

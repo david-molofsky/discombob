@@ -11,6 +11,7 @@ import QuickAddBar from '../components/QuickAddBar';
 import SwipeableItem from '../components/SwipeableItem';
 import StateMarker from '../components/StateMarker';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import ReorderableList, { GripHandle } from '../components/ReorderableList';
 import type { Task } from '../db/schemas';
 
 type Tab = 'todo' | 'today' | 'completed';
@@ -21,19 +22,19 @@ export default function Someday() {
 
   const todoItems = useLiveQuery(async () => {
     const items = await db.tasks.where('location').equals('someday_todo').toArray();
-    items.sort((a, b) => (a.capturedAt < b.capturedAt ? 1 : -1));
+    items.sort((a, b) => a.order - b.order);
     return items;
   }, []);
 
-  const todayFromSomeday = useLiveQuery(async () => {
+  const todayItems = useLiveQuery(async () => {
     const items = await db.tasks.where('location').equals('today').toArray();
-    items.sort((a, b) => (a.capturedAt < b.capturedAt ? 1 : -1));
-    return items.filter((t) => t.origin === 'someday');
+    items.sort((a, b) => a.order - b.order);
+    return items;
   }, []);
 
   const completedItems = useLiveQuery(async () => {
     const items = await db.tasks.where('location').equals('someday_completed').toArray();
-    items.sort((a, b) => ((a.completedAt ?? '') < (b.completedAt ?? '') ? 1 : -1));
+    items.sort((a, b) => a.order - b.order);
     return items;
   }, []);
 
@@ -46,11 +47,14 @@ export default function Someday() {
       capturedAt: new Date().toISOString(),
       movedToTodayAt: null,
       completedAt: null,
+      order: Date.now(),
     });
   };
 
   const moveToToday = async (task: Task) => {
     if (task.id == null) return;
+    // order is intentionally left untouched here, so relative ordering
+    // among items dragged together in To Do carries over into Today.
     await db.tasks.update(task.id, {
       location: 'today',
       movedToTodayAt: new Date().toISOString(),
@@ -73,6 +77,8 @@ export default function Someday() {
       state: 'not_started',
     });
   };
+
+  const reorder = (draggedId: number, newOrder: number) => db.tasks.update(draggedId, { order: newOrder });
 
   const confirmDelete = async () => {
     if (deleteTarget?.id != null) {
@@ -134,97 +140,142 @@ export default function Someday() {
           (!todoItems || todoItems.length === 0 ? (
             <EmptyState text="Nothing captured yet. Use the box above to add anything." />
           ) : (
-            todoItems.map((item) => (
-              <SwipeableItem
-                key={item.id}
-                leftAction={{
-                  label: 'Today',
-                  icon: <ArrowForwardIcon sx={{ fontSize: 18 }} />,
-                  color: COLORS.accent,
-                  textColor: '#0D2320',
-                  onCommit: () => moveToToday(item),
-                }}
-                rightAction={{
-                  label: 'Complete',
-                  icon: <CheckIcon sx={{ fontSize: 18 }} />,
-                  color: COLORS.amber,
-                  textColor: '#2B1B04',
-                  onCommit: () => markCompleted(item),
-                }}
-                onLongPress={() => setDeleteTarget(item)}
-              >
-                <ItemCard text={item.text} meta={`Captured ${dayjs(item.capturedAt).format('MMM D, h:mm A')}`} />
-              </SwipeableItem>
-            ))
+            <ReorderableList
+              items={todoItems}
+              onReorder={reorder}
+              renderItem={(item, dragHandleProps) => (
+                <SwipeableItem
+                  leftAction={{
+                    label: 'Today',
+                    icon: <ArrowForwardIcon sx={{ fontSize: 18 }} />,
+                    color: COLORS.accent,
+                    textColor: '#0D2320',
+                    onCommit: () => moveToToday(item),
+                  }}
+                  rightAction={{
+                    label: 'Complete',
+                    icon: <CheckIcon sx={{ fontSize: 18 }} />,
+                    color: COLORS.amber,
+                    textColor: '#2B1B04',
+                    onCommit: () => markCompleted(item),
+                  }}
+                  onLongPress={() => setDeleteTarget(item)}
+                >
+                  <ItemCard
+                    text={item.text}
+                    meta={`Captured ${dayjs(item.capturedAt).format('MMM D, h:mm A')}`}
+                    dragHandleProps={dragHandleProps}
+                  />
+                </SwipeableItem>
+              )}
+            />
           ))}
 
         {tab === 'today' &&
-          (!todayFromSomeday || todayFromSomeday.length === 0 ? (
-            <EmptyState text="Nothing from Someday is in Today right now." />
+          (!todayItems || todayItems.length === 0 ? (
+            <EmptyState text="Nothing in Today right now." />
           ) : (
-            todayFromSomeday.map((item) => (
-              <SwipeableItem
-                key={item.id}
-                leftAction={{
-                  label: 'To Do',
-                  icon: <ArrowBackIcon sx={{ fontSize: 18 }} />,
-                  color: COLORS.textDim,
-                  textColor: '#14161A',
-                  onCommit: () => sendBackToTodo(item),
-                }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    bgcolor: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '14px',
-                    p: 1.75,
+            <ReorderableList
+              items={todayItems}
+              onReorder={reorder}
+              renderItem={(item, dragHandleProps) => (
+                <SwipeableItem
+                  leftAction={{
+                    label: 'To Do',
+                    icon: <ArrowBackIcon sx={{ fontSize: 18 }} />,
+                    color: COLORS.textDim,
+                    textColor: '#14161A',
+                    onCommit: () => sendBackToTodo(item),
                   }}
                 >
-                  <StateMarker state={item.state} />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: 14 }}>{item.text}</Typography>
-                    <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
-                      Moved to Today {dayjs(item.movedToTodayAt ?? item.capturedAt).format('h:mm A')}
-                    </Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      bgcolor: COLORS.surface,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '14px',
+                      p: 1.75,
+                    }}
+                  >
+                    <StateMarker state={item.state} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: 14 }}>{item.text}</Typography>
+                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
+                        {item.origin === 'someday' ? 'Moved to Today' : 'Added directly'}{' '}
+                        {dayjs(item.movedToTodayAt ?? item.capturedAt).format('h:mm A')}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 10,
+                        color: COLORS.textFaint,
+                        bgcolor: COLORS.surfaceRaised,
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: '100px',
+                        px: 1,
+                        py: 0.375,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {item.origin === 'someday' ? 'Someday' : 'Direct'}
+                    </Box>
+                    <GripHandle {...dragHandleProps} />
                   </Box>
-                </Box>
-              </SwipeableItem>
-            ))
+                </SwipeableItem>
+              )}
+            />
           ))}
 
         {tab === 'completed' &&
           (!completedItems || completedItems.length === 0 ? (
             <EmptyState text="Nothing completed yet." />
           ) : (
-            completedItems.map((item) => (
-              <SwipeableItem key={item.id} onLongPress={() => setDeleteTarget(item)}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    bgcolor: COLORS.surface,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '14px',
-                    p: 1.75,
-                  }}
-                >
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: 14, textDecoration: 'line-through', color: COLORS.textFaint }}>
-                      {item.text}
-                    </Typography>
-                    <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
-                      Completed {dayjs(item.completedAt).format('MMM D')}
-                    </Typography>
+            <ReorderableList
+              items={completedItems}
+              onReorder={reorder}
+              renderItem={(item, dragHandleProps) => (
+                <SwipeableItem onLongPress={() => setDeleteTarget(item)}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      bgcolor: COLORS.surface,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: '14px',
+                      p: 1.75,
+                    }}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: 14, textDecoration: 'line-through', color: COLORS.textFaint }}>
+                        {item.text}
+                      </Typography>
+                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>
+                        Completed {dayjs(item.completedAt).format('MMM D')}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 10,
+                        color: COLORS.textFaint,
+                        bgcolor: COLORS.surfaceRaised,
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: '100px',
+                        px: 1,
+                        py: 0.375,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {item.origin === 'someday' ? 'Someday' : 'Direct'}
+                    </Box>
+                    <CheckIcon sx={{ color: COLORS.accent, fontSize: 18 }} />
+                    <GripHandle {...dragHandleProps} />
                   </Box>
-                  <CheckIcon sx={{ color: COLORS.accent, fontSize: 18 }} />
-                </Box>
-              </SwipeableItem>
-            ))
+                </SwipeableItem>
+              )}
+            />
           ))}
       </Box>
 
@@ -238,18 +289,32 @@ export default function Someday() {
   );
 }
 
-function ItemCard({ text, meta }: { text: string; meta: string }) {
+function ItemCard({
+  text,
+  meta,
+  dragHandleProps,
+}: {
+  text: string;
+  meta: string;
+  dragHandleProps: { onPointerDown: (e: React.PointerEvent) => void };
+}) {
   return (
     <Box
       sx={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 1,
         bgcolor: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
         borderRadius: '14px',
         p: 1.75,
       }}
     >
-      <Typography sx={{ fontSize: 14, lineHeight: 1.4 }}>{text}</Typography>
-      <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>{meta}</Typography>
+      <Box sx={{ flex: 1 }}>
+        <Typography sx={{ fontSize: 14, lineHeight: 1.4 }}>{text}</Typography>
+        <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5 }}>{meta}</Typography>
+      </Box>
+      <GripHandle {...dragHandleProps} />
     </Box>
   );
 }
