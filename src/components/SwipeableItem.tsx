@@ -27,6 +27,7 @@ export default function SwipeableItem({
   const [dragX, setDragX] = useState(0);
   const dragging = useRef(false);
   const startX = useRef(0);
+  const draggedPastThreshold = useRef(false);
 
   const longPress = useLongPress(() => {
     onLongPress?.();
@@ -45,7 +46,10 @@ export default function SwipeableItem({
     if (delta < 0 && !rightAction) delta = 0;
     delta = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, delta));
     setDragX(delta);
-    if (Math.abs(delta) > 8) longPress.onPointerUp(); // real drag cancels long-press
+    if (Math.abs(delta) > 8) {
+      longPress.onPointerUp(); // real drag cancels long-press
+      draggedPastThreshold.current = true; // and suppresses the click that follows pointerup
+    }
   };
 
   const endDrag = () => {
@@ -64,6 +68,18 @@ export default function SwipeableItem({
       rightAction.onCommit();
     }
     setDragX(0);
+  };
+
+  // A mouse/pointer drag that starts and ends on the same element still
+  // fires a native "click" afterward, regardless of how far it moved. If
+  // this row also has a tap handler (e.g. open detail), that would fire
+  // right alongside a swipe commit. Swallow that one synthetic click.
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (draggedPastThreshold.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      draggedPastThreshold.current = false;
+    }
   };
 
   const progress = Math.min(1, Math.abs(dragX) / THRESHOLD);
@@ -124,6 +140,7 @@ export default function SwipeableItem({
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
         onPointerCancel={endDrag}
+        onClickCapture={handleClickCapture}
         sx={{
           position: 'relative',
           transform: `translateX(${dragX}px)`,

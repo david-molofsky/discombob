@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import HomeIcon from '@mui/icons-material/Home';
 import InboxIcon from '@mui/icons-material/AllInbox';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import MoodIcon from '@mui/icons-material/EmojiEmotions';
 import { paths } from '../routes/paths';
 import { COLORS } from '../theme/theme';
 
@@ -10,7 +11,14 @@ export default function BottomNav() {
   const location = useNavigate();
   const { pathname } = useLocation();
 
-  const value = pathname === paths.someday ? paths.someday : pathname === paths.trends ? paths.trends : paths.home;
+  const value =
+    pathname === paths.someday
+      ? paths.someday
+      : pathname === paths.trends
+        ? paths.trends
+        : pathname === paths.mood
+          ? paths.mood
+          : paths.home;
 
   return (
     <Paper
@@ -28,6 +36,7 @@ export default function BottomNav() {
       >
         <BottomNavigationAction label="Home" value={paths.home} icon={<HomeIcon />} />
         <BottomNavigationAction label="Someday" value={paths.someday} icon={<InboxIcon />} />
+        <BottomNavigationAction label="Mood" value={paths.mood} icon={<MoodIcon />} />
         <BottomNavigationAction label="Trends" value={paths.trends} icon={<ShowChartIcon />} />
       </BottomNavigation>
     </Paper>

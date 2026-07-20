@@ -2,11 +2,24 @@ import { Box, Typography, Button } from '@mui/material';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { COLORS } from '../theme/theme';
 
+const UPDATE_CHECK_INTERVAL_MS = 60_000;
+
 export default function UpdateBanner() {
   const {
     needRefresh: [needRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({
+    onRegisteredSW(_url, registration) {
+      if (!registration) return;
+      // GitHub Pages can cache sw.js aggressively, so the browser's own
+      // 24h update check isn't frequent enough — poll explicitly, and
+      // also check whenever the tab regains focus.
+      setInterval(() => registration.update(), UPDATE_CHECK_INTERVAL_MS);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registration.update();
+      });
+    },
+  });
 
   if (!needRefresh) return null;
 

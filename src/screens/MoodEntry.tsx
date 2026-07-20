@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Typography, Slider, TextField, Button, IconButton, InputBase } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import dayjs, { Dayjs } from 'dayjs';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -8,9 +8,15 @@ import CheckIcon from '@mui/icons-material/Check';
 import { db } from '../db/db';
 import { COLORS } from '../theme/theme';
 import { MOOD_SCALE, DEFAULT_TRIGGERS } from '../db/schemas';
+import { paths } from '../routes/paths';
+import { safeParseTriggers } from './MoodHistory';
 
 export default function MoodEntry() {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const editingId = id ? Number(id) : null;
+  const existing = useLiveQuery(() => (editingId != null ? db.moodEntries.get(editingId) : undefined), [editingId]);
+
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [moodValue, setMoodValue] = useState<number>(4);
   const [energy, setEnergy] = useState<number>(50);
@@ -18,6 +24,19 @@ export default function MoodEntry() {
   const [note, setNote] = useState('');
   const [addingTrigger, setAddingTrigger] = useState(false);
   const [newTriggerText, setNewTriggerText] = useState('');
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-fill the form once the existing entry loads (edit mode only).
+  useEffect(() => {
+    if (editingId != null && existing && !prefilled) {
+      setDate(dayjs(existing.timestamp));
+      setMoodValue(existing.moodValue);
+      setEnergy(existing.energy);
+      setTriggers(safeParseTriggers(existing.triggers));
+      setNote(existing.note ?? '');
+      setPrefilled(true);
+    }
+  }, [editingId, existing, prefilled]);
 
   const customTriggers = useLiveQuery(() => db.customTriggers.toArray(), []);
   const allTriggers = [...DEFAULT_TRIGGERS, ...(customTriggers?.map((t) => t.name) ?? [])];
@@ -43,15 +62,27 @@ export default function MoodEntry() {
 
   const save = async () => {
     const timestamp = isToday ? new Date().toISOString() : date.hour(12).minute(0).toISOString();
-    await db.moodEntries.add({
-      dateISO: date.format('YYYY-MM-DD'),
-      timestamp,
-      moodValue,
-      energy,
-      triggers: JSON.stringify(triggers),
-      note,
-    });
-    navigate(-1);
+    if (editingId != null) {
+      await db.moodEntries.update(editingId, {
+        dateISO: date.format('YYYY-MM-DD'),
+        timestamp,
+        moodValue,
+        energy,
+        triggers: JSON.stringify(triggers),
+        note,
+      });
+      navigate(paths.moodDetail(editingId), { replace: true });
+    } else {
+      await db.moodEntries.add({
+        dateISO: date.format('YYYY-MM-DD'),
+        timestamp,
+        moodValue,
+        energy,
+        triggers: JSON.stringify(triggers),
+        note,
+      });
+      navigate(-1);
+    }
   };
 
   return (
@@ -65,7 +96,7 @@ export default function MoodEntry() {
           <ArrowBackIcon sx={{ fontSize: 18 }} />
         </IconButton>
         <Typography variant="h5" sx={{ fontSize: 19 }}>
-          How's your head feeling?
+          {editingId != null ? 'Edit check-in' : "How's your head feeling?"}
         </Typography>
       </Box>
 
@@ -252,7 +283,7 @@ export default function MoodEntry() {
           onClick={save}
           sx={{ bgcolor: COLORS.accent, color: '#0D2320', fontWeight: 600, fontSize: 15, py: 1.5, '&:hover': { bgcolor: COLORS.accent } }}
         >
-          Save check-in
+          Save {editingId != null ? 'changes' : 'check-in'}
         </Button>
       </Box>
     </Box>

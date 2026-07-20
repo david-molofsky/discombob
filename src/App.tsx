@@ -8,10 +8,12 @@ import Home from './screens/Home';
 import Someday from './screens/Someday';
 import Trends from './screens/Trends';
 import MoodEntry from './screens/MoodEntry';
+import MoodHistory from './screens/MoodHistory';
+import MoodDetail from './screens/MoodDetail';
 
 function Shell() {
   const { pathname } = useLocation();
-  const showNav = pathname !== paths.moodNew;
+  const showNav = pathname !== paths.moodNew && !pathname.startsWith('/mood/');
 
   return (
     <Box
@@ -32,7 +34,10 @@ function Shell() {
         <Route path={paths.home} element={<Home />} />
         <Route path={paths.someday} element={<Someday />} />
         <Route path={paths.trends} element={<Trends />} />
+        <Route path={paths.mood} element={<MoodHistory />} />
         <Route path={paths.moodNew} element={<MoodEntry />} />
+        <Route path="/mood/:id/edit" element={<MoodEntry />} />
+        <Route path="/mood/:id" element={<MoodDetail />} />
       </Routes>
       {showNav && <BottomNav />}
       <UpdateBanner />
