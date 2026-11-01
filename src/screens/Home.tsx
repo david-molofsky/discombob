@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import dayjs from 'dayjs';
 import { db } from '../db/db';
@@ -13,8 +15,10 @@ import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import TagChips from '../components/TagChips';
 import { useLongPress } from '../components/useLongPress';
 import type { Task } from '../db/schemas';
+import { paths } from '../routes/paths';
 
 export default function Home() {
+  const navigate = useNavigate();
   const todayStr = dayjs().format('YYYY-MM-DD');
   const [actionsTarget, setActionsTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
@@ -89,6 +93,10 @@ export default function Home() {
           {dayjs().format('dddd, MMMM D')}
         </Typography>
       </Box>
+
+      <Button variant="outlined" color="primary" startIcon={<AutoStoriesIcon />} onClick={() => navigate(paths.novelQuest)} fullWidth sx={{ justifyContent: 'flex-start', py: 1.25 }}>
+        Novel Quest · Track your novel progress
+      </Button>
 
       <Box>
         <SectionLabel>Mood</SectionLabel>
