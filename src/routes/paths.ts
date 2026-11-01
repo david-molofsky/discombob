@@ -6,4 +6,5 @@ export const paths = {
   moodNew: '/mood/new',
   moodDetail: (id: number) => `/mood/${id}`,
   moodEdit: (id: number) => `/mood/${id}/edit`,
+  novelQuest: '/novel-quest',
 } as const;
