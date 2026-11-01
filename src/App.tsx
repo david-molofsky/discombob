@@ -10,26 +10,14 @@ import Trends from './screens/Trends';
 import MoodEntry from './screens/MoodEntry';
 import MoodHistory from './screens/MoodHistory';
 import MoodDetail from './screens/MoodDetail';
+import NovelQuest from './screens/NovelQuest';
 
 function Shell() {
   const { pathname } = useLocation();
   const showNav = pathname !== paths.moodNew && !pathname.startsWith('/mood/');
 
   return (
-    <Box
-      sx={{
-        height: '100dvh',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: COLORS.bg,
-        color: COLORS.text,
-        maxWidth: 480,
-        mx: 'auto',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    >
+    <Box sx={{ height: '100dvh', width: '100%', display: 'flex', flexDirection: 'column', bgcolor: COLORS.bg, color: COLORS.text, maxWidth: 480, mx: 'auto', overflow: 'hidden', position: 'relative' }}>
       <Routes>
         <Route path={paths.home} element={<Home />} />
         <Route path={paths.someday} element={<Someday />} />
@@ -38,20 +26,13 @@ function Shell() {
         <Route path={paths.moodNew} element={<MoodEntry />} />
         <Route path="/mood/:id/edit" element={<MoodEntry />} />
         <Route path="/mood/:id" element={<MoodDetail />} />
+        <Route path={paths.novelQuest} element={<NovelQuest />} />
       </Routes>
       {showNav && <BottomNav />}
       <UpdateBanner />
     </Box>
   );
 }
-
 export default function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <HashRouter>
-        <Shell />
-      </HashRouter>
-    </ThemeProvider>
-  );
+  return <ThemeProvider theme={theme}><CssBaseline /><HashRouter><Shell /></HashRouter></ThemeProvider>;
 }
