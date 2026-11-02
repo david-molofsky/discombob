@@ -11,7 +11,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import StopIcon from '@mui/icons-material/Stop';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import NotebookPenIcon from '@mui/icons-material/NotebookPen';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -179,7 +179,7 @@ export default function NovelQuest() {
     <Box><Typography variant="h4" sx={{ fontSize: 24 }}>Novel Quest</Typography><Typography sx={{ color: COLORS.textDim, fontSize: 13 }}>Your writing adventure</Typography></Box>
     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
       {[
-        { title: 'Review a Chapter', skill: 'editor' as NovelSkill, xp: 50, description: 'Review the chapter and identify the main changes needed.', Icon: AutoStoriesIcon },
+        { title: 'Review a Chapter', skill: 'editor' as NovelSkill, xp: 50, description: 'Review the chapter and identify the main changes needed.', Icon: NotebookPenIcon },
         { title: 'Work on Flashbacks', skill: 'wordsmith' as NovelSkill, xp: 35, description: 'Develop, refine or integrate a flashback into the story.', Icon: HistoryEduIcon },
         { title: 'Resolve a Plot Issue', skill: 'storyteller' as NovelSkill, xp: 30, description: 'Resolve an inconsistency or structural problem.', Icon: LightbulbOutlinedIcon },
       ].map(({ title, skill, xp, description, Icon }) => (
