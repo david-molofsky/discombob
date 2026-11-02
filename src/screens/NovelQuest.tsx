@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, LinearProgress, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel, LinearProgress, MenuItem, Select, Stack, TextField, ThemeProvider, Typography } from '@mui/material';
+import { createTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -13,7 +14,11 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { NovelChapter, NovelChapterStage, NovelQuest, NovelSkill, NovelSession } from '../db/novelQuestSchemas';
-import { COLORS } from '../theme/theme';
+import { COLORS, theme } from '../theme/theme';
+
+const novelQuestTheme = createTheme(theme, {
+  palette: { primary: { main: '#07fa9d', contrastText: '#062116' } },
+});
 
 const stages: { value: NovelChapterStage; label: string }[] = [
   { value: 'not_started', label: 'Not started' }, { value: 'in_progress', label: 'In progress' },
@@ -160,7 +165,7 @@ export default function NovelQuest() {
     if (chapter.id != null) await db.novelChapters.update(chapter.id, { stage, updatedAt: new Date().toISOString() });
   };
 
-  return <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, pt: 3, pb: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+  return <ThemeProvider theme={novelQuestTheme}><Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, pt: 3, pb: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
     <Box><Typography variant="h4" sx={{ fontSize: 24 }}>Novel Quest</Typography><Typography sx={{ color: COLORS.textDim, fontSize: 13 }}>Your writing adventure</Typography></Box>
     <Box sx={{ p: 2, border: '1px solid ' + COLORS.border, borderRadius: 3, bgcolor: COLORS.surface }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography fontWeight={700}>{levelTitles[level] ?? 'Novelist'}</Typography><Typography variant="caption" color="text.secondary">Level {level + 1} · {totalXp.toLocaleString()} total XP</Typography></Box><Chip label={'Level ' + (level + 1)} color="primary" size="small" /></Stack>
@@ -186,7 +191,7 @@ export default function NovelQuest() {
     <Dialog open={chapterOpen} onClose={() => setChapterOpen(false)} fullWidth><DialogTitle>{editingChapterId == null ? 'Add chapter' : 'Edit chapter'}</DialogTitle><DialogContent><TextField autoFocus fullWidth label="Chapter title" value={chapterTitle} onChange={(e) => setChapterTitle(e.target.value)} sx={{ mt: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') void saveChapter(); }} /></DialogContent><DialogActions><Button onClick={() => setChapterOpen(false)}>Cancel</Button><Button onClick={() => void saveChapter()} disabled={!chapterTitle.trim()}>{editingChapterId == null ? 'Add chapter' : 'Save changes'}</Button></DialogActions></Dialog>
     <Dialog open={questOpen} onClose={() => setQuestOpen(false)} fullWidth><DialogTitle>Add a quest</DialogTitle><DialogContent><Typography variant="subtitle2" sx={{ mb: 1 }}>Suggested quests</Typography><Stack spacing={1} sx={{ mb: 2 }}>{templates.map((t) => <Button key={t.title} variant="outlined" sx={{ justifyContent: 'space-between', textAlign: 'left' }} onClick={() => void addQuest(t)}><Box><Typography variant="body2">{t.title}</Typography><Typography variant="caption" color="text.secondary">{skillLabel(t.skill)} · {t.xp} XP</Typography></Box><AddIcon fontSize="small" /></Button>)}</Stack><Typography variant="subtitle2" sx={{ mb: 1 }}>Custom quest</Typography><Stack spacing={1.5}><TextField label="Task" value={questTitle} onChange={(e) => setQuestTitle(e.target.value)} fullWidth /><TextField label="Description (optional)" value={questDescription} onChange={(e) => setQuestDescription(e.target.value)} fullWidth multiline /><FormControl fullWidth><InputLabel>Skill</InputLabel><Select value={questSkill} label="Skill" onChange={(e) => setQuestSkill(e.target.value as NovelSkill)}>{skills.map((s) => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}</Select></FormControl><TextField label="XP reward" type="number" value={questXp} onChange={(e) => setQuestXp(Number(e.target.value))} inputProps={{ min: 0, max: 500 }} /><FormControl fullWidth><InputLabel>Chapter (optional)</InputLabel><Select value={questChapter} label="Chapter (optional)" onChange={(e) => setQuestChapter(e.target.value === '' ? '' : Number(e.target.value))}><MenuItem value="">No chapter</MenuItem>{chapters.map((c) => <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>)}</Select></FormControl></Stack></DialogContent><DialogActions><Button onClick={() => setQuestOpen(false)}>Close</Button><Button onClick={() => void addQuest()} disabled={!questTitle.trim()}>Create quest</Button></DialogActions></Dialog>
     <Dialog open={sessionOpen} onClose={() => setSessionOpen(false)} fullWidth><DialogTitle>{editingSessionId == null ? 'Log a writing session' : 'Edit writing session'}</DialogTitle><DialogContent><Stack spacing={1.5} sx={{ mt: 1 }}><TextField label="Minutes spent" type="number" value={minutes} onChange={(e) => setMinutes(Math.max(0, Number(e.target.value)))} inputProps={{ min: 0, max: 1440 }} /><FormControl fullWidth><InputLabel>Skill</InputLabel><Select value={sessionSkill} label="Skill" onChange={(e) => setSessionSkill(e.target.value as NovelSkill)}>{skills.map((s) => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}</Select></FormControl><FormControl fullWidth><InputLabel>Chapter (optional)</InputLabel><Select value={sessionChapter} label="Chapter (optional)" onChange={(e) => setSessionChapter(e.target.value === '' ? '' : Number(e.target.value))}><MenuItem value="">No chapter</MenuItem>{chapters.map((c) => <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>)}</Select></FormControl><Alert severity="info">Every complete 15 minutes earns 10 XP. Partial 15-minute blocks do not earn XP.</Alert></Stack></DialogContent><DialogActions><Button onClick={() => { setSessionOpen(false); setEditingSessionId(null); }}>Cancel</Button><Button onClick={() => void addManualSession()}>{editingSessionId == null ? 'Save session' : 'Save changes'}</Button></DialogActions></Dialog>
-  </Box>;
+  </Box></ThemeProvider>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) { return <Box sx={{ flex: 1, minWidth: 0, p: 1.25, borderRadius: 2, bgcolor: COLORS.surface, border: '1px solid ' + COLORS.border }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={700} sx={{ fontSize: 18 }}>{value}</Typography></Box>; }
