@@ -11,9 +11,10 @@ import PauseIcon from '@mui/icons-material/Pause';
 import StopIcon from '@mui/icons-material/Stop';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
+import SvgIcon, { type SvgIconProps } from '@mui/material/SvgIcon';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { NovelChapter, NovelChapterStage, NovelQuest, NovelSkill, NovelSession } from '../db/novelQuestSchemas';
@@ -179,9 +180,9 @@ export default function NovelQuest() {
     <Box><Typography variant="h4" sx={{ fontSize: 24 }}>Novel Quest</Typography><Typography sx={{ color: COLORS.textDim, fontSize: 13 }}>Your writing adventure</Typography></Box>
     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
       {[
-        { title: 'Review a Chapter', skill: 'editor' as NovelSkill, xp: 50, description: 'Review the chapter and identify the main changes needed.', Icon: AutoStoriesIcon },
+        { title: 'Review a Chapter', skill: 'editor' as NovelSkill, xp: 50, description: 'Review the chapter and identify the main changes needed.', Icon: EditNoteIcon },
         { title: 'Work on Flashbacks', skill: 'wordsmith' as NovelSkill, xp: 35, description: 'Develop, refine or integrate a flashback into the story.', Icon: HistoryEduIcon },
-        { title: 'Resolve a Plot Issue', skill: 'storyteller' as NovelSkill, xp: 30, description: 'Resolve an inconsistency or structural problem.', Icon: LightbulbOutlinedIcon },
+        { title: 'Resolve a Plot Issue', skill: 'storyteller' as NovelSkill, xp: 30, description: 'Resolve an inconsistency or structural problem.', Icon: ShovelIcon },
       ].map(({ title, skill, xp, description, Icon }) => (
         <Button key={title} variant="outlined" onClick={() => void addQuest({ title, skill, xp, description })}
           sx={{ aspectRatio: '1 / 1', minWidth: 0, p: 1, borderRadius: 3, borderColor: COLORS.border, bgcolor: COLORS.surface, color: COLORS.text, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0.75, textTransform: 'none', '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' } }}>
@@ -218,6 +219,8 @@ export default function NovelQuest() {
     <Dialog open={sessionOpen} onClose={() => setSessionOpen(false)} fullWidth><DialogTitle>{editingSessionId == null ? 'Log a writing session' : 'Edit writing session'}</DialogTitle><DialogContent><Stack spacing={1.5} sx={{ mt: 1 }}><TextField label="Minutes spent" type="number" value={minutes} onChange={(e) => setMinutes(Math.max(0, Number(e.target.value)))} slotProps={{ htmlInput: { min: 0, max: 1440 } }} /><FormControl fullWidth><InputLabel>Skill</InputLabel><Select value={sessionSkill} label="Skill" onChange={(e) => setSessionSkill(e.target.value as NovelSkill)}>{skills.map((s) => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}</Select></FormControl><Autocomplete freeSolo options={Array.from({ length: 50 }, (_, i) => String(i + 1)).concat(chapters.map((chapter) => chapter.title))} value={sessionChapterLabel} onInputChange={(_, value) => { setSessionChapterLabel(value); const match = chapters.find((chapter) => chapter.title.toLowerCase() === value.trim().toLowerCase()); setSessionChapter(match?.id ?? ''); }} onChange={(_, value) => { const label = value ?? ''; setSessionChapterLabel(label); const match = chapters.find((chapter) => chapter.title.toLowerCase() === label.trim().toLowerCase()); setSessionChapter(match?.id ?? ''); }} renderInput={(params) => <TextField {...params} label="Chapter (optional)" placeholder="Choose 1–50 or type a chapter" size="small" />} />{editingSessionId != null && <TextField label="Session notes" placeholder="What did you work on? Add progress, ideas or things to revisit..." value={sessionNotes} onChange={(e) => setSessionNotes(e.target.value)} multiline minRows={4} fullWidth /> }<Alert severity="info">Every complete 15 minutes earns 10 XP. Partial 15-minute blocks do not earn XP.</Alert></Stack></DialogContent><DialogActions>{editingSessionId != null && <Button color="error" startIcon={<DeleteOutlinedIcon />} onClick={() => { const session = sessions.find((item) => item.id === editingSessionId); if (session?.id != null && window.confirm('Delete this writing session? Its XP will also be removed.')) void db.transaction('rw', db.novelSessions, db.novelXpTransactions, async () => { await db.novelSessions.delete(session.id!); await db.novelXpTransactions.where('sourceKey').equals('session:' + session.id).delete(); }).then(() => { setSessionOpen(false); setEditingSessionId(null); }); }}>Delete session</Button>}<Button onClick={() => { setSessionOpen(false); setEditingSessionId(null); }}>Cancel</Button><Button onClick={() => void addManualSession()}>{editingSessionId == null ? 'Save session' : 'Save changes'}</Button></DialogActions></Dialog>
   </Box></ThemeProvider>;
 }
+
+function ShovelIcon(props: SvgIconProps) { return <SvgIcon {...props} viewBox="0 0 24 24"><path d="M12.8 2.2a1 1 0 0 0-1.6 0L8.6 5.5a3.2 3.2 0 0 0 4.5 4.5l1.1-1.1 6.1 6.1a1 1 0 0 0 1.4-1.4l-6.1-6.1 1.1-1.1a3.2 3.2 0 0 0-3.9-5.1Zm-1.4 6.4a1.2 1.2 0 0 1-1.7-1.7l2.3-2.3 1.7 1.7-2.3 2.3ZM4.1 13.7a1 1 0 0 0-1.4 1.4l6.2 6.2a1 1 0 0 0 1.4-1.4l-6.2-6.2Z" /></SvgIcon>; }
 
 function Stat({ label, value }: { label: string; value: string }) { return <Box sx={{ flex: 1, minWidth: 0, p: 1.25, borderRadius: 2, bgcolor: COLORS.surface, border: '1px solid ' + COLORS.border }}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography sx={{ fontWeight: 700, fontSize: 18 }}>{value}</Typography></Box>; }
 function Empty({ children }: { children: React.ReactNode }) { return <Box sx={{ p: 2, border: '1px dashed ' + COLORS.border, borderRadius: 2, color: COLORS.textDim, fontSize: 13 }}>{children}</Box>; }
