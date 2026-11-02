@@ -133,10 +133,12 @@ export default function NovelQuest() {
       await db.novelSessions.update(editingSessionId, { startedAt: new Date(Date.now() - durationMs).toISOString(), endedAt: timestamp, durationMs, status: 'completed', chapterId: sessionChapter === '' ? undefined : sessionChapter, chapterLabel: sessionChapterLabel.trim() || undefined, skill: sessionSkill, notes: sessionNotes.trim() || undefined });
       const xp = Math.floor(durationMs / 900000) * 10;
       const existing = await db.novelXpTransactions.where('sourceKey').equals('session:' + editingSessionId).first();
-      if (existing?.id != null) await db.novelXpTransactions.update(existing.id, { amount: xp, skill: sessionSkill, createdAt: timestamp });
-      else await awardSession(editingSessionId, durationMs, sessionSkill);
+      if (existing?.id != null) {
+        if (xp > 0) await db.novelXpTransactions.update(existing.id, { amount: xp, skill: sessionSkill, createdAt: timestamp });
+        else await db.novelXpTransactions.delete(existing.id);
+      } else await awardSession(editingSessionId, durationMs, sessionSkill);
     } else {
-      const id = await db.novelSessions.add({ startedAt: new Date(Date.now() - durationMs).toISOString(), endedAt: timestamp, durationMs, status: 'completed', chapterId: sessionChapter === '' ? undefined : sessionChapter, skill: sessionSkill });
+      const id = await db.novelSessions.add({ startedAt: new Date(Date.now() - durationMs).toISOString(), endedAt: timestamp, durationMs, status: 'completed', chapterId: sessionChapter === '' ? undefined : sessionChapter, chapterLabel: sessionChapterLabel.trim() || undefined, skill: sessionSkill, notes: sessionNotes.trim() || undefined });
       await awardSession(id, durationMs, sessionSkill);
     }
     setEditingSessionId(null);
@@ -146,6 +148,8 @@ export default function NovelQuest() {
     setEditingSessionId(session.id ?? null);
     setMinutes(Math.round(session.durationMs / 60000));
     setSessionChapter(session.chapterId ?? '');
+    setSessionChapterLabel(session.chapterLabel ?? (chapters.find((chapter) => chapter.id === session.chapterId)?.title ?? ''));
+    setSessionNotes(session.notes ?? '');
     setSessionSkill(session.skill ?? 'editor');
     setSessionOpen(true);
   };
