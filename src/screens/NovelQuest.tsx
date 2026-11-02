@@ -11,6 +11,9 @@ import PauseIcon from '@mui/icons-material/Pause';
 import StopIcon from '@mui/icons-material/Stop';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import type { NovelChapter, NovelChapterStage, NovelQuest, NovelSkill, NovelSession } from '../db/novelQuestSchemas';
@@ -29,9 +32,10 @@ const skills: { value: NovelSkill; label: string }[] = [
   { value: 'character_builder', label: 'Character Builder' }, { value: 'worldbuilder', label: 'Worldbuilder' }, { value: 'editor', label: 'Editor' },
 ];
 const templates: { title: string; description: string; skill: NovelSkill; xp: number }[] = [
-  { title: 'Review a chapter', description: 'Review the chapter and identify the main changes needed.', skill: 'editor', xp: 50 },
+  { title: 'Review a Chapter', description: 'Review the chapter and identify the main changes needed.', skill: 'editor', xp: 50 },
+  { title: 'Work on Flashbacks', description: 'Develop, refine or integrate a flashback into the story.', skill: 'wordsmith', xp: 35 },
   { title: 'Revise a scene', description: 'Make a substantive revision to one scene.', skill: 'wordsmith', xp: 30 },
-  { title: 'Resolve a plot issue', description: 'Resolve an inconsistency or structural problem.', skill: 'storyteller', xp: 75 },
+  { title: 'Resolve a Plot Issue', description: 'Resolve an inconsistency or structural problem.', skill: 'storyteller', xp: 30 },
   { title: 'Review a character arc', description: 'Check a character’s motivation, development and relationships.', skill: 'character_builder', xp: 75 },
   { title: 'Research the setting', description: 'Research and record details needed for the story world.', skill: 'worldbuilder', xp: 30 },
   { title: 'Proofread a section', description: 'Check continuity, grammar and presentation.', skill: 'editor', xp: 20 },
@@ -173,6 +177,21 @@ export default function NovelQuest() {
 
   return <ThemeProvider theme={novelQuestTheme}><Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, pt: 3, pb: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
     <Box><Typography variant="h4" sx={{ fontSize: 24 }}>Novel Quest</Typography><Typography sx={{ color: COLORS.textDim, fontSize: 13 }}>Your writing adventure</Typography></Box>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1 }}>
+      {[
+        { title: 'Review a Chapter', skill: 'editor' as NovelSkill, xp: 50, description: 'Review the chapter and identify the main changes needed.', Icon: AutoStoriesIcon },
+        { title: 'Work on Flashbacks', skill: 'wordsmith' as NovelSkill, xp: 35, description: 'Develop, refine or integrate a flashback into the story.', Icon: HistoryEduIcon },
+        { title: 'Resolve a Plot Issue', skill: 'storyteller' as NovelSkill, xp: 30, description: 'Resolve an inconsistency or structural problem.', Icon: LightbulbOutlinedIcon },
+      ].map(({ title, skill, xp, description, Icon }) => (
+        <Button key={title} variant="outlined" onClick={() => void addQuest({ title, skill, xp, description })}
+          sx={{ aspectRatio: '1 / 1', minWidth: 0, p: 1, borderRadius: 3, borderColor: COLORS.border, bgcolor: COLORS.surface, color: COLORS.text, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0.75, textTransform: 'none', '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' } }}>
+          <Icon sx={{ fontSize: 30, color: 'primary.main' }} />
+          <Typography sx={{ fontSize: 12, lineHeight: 1.25, fontWeight: 700, textAlign: 'center' }}>{title}</Typography>
+          <Typography sx={{ fontSize: 11, color: COLORS.textDim, textAlign: 'center' }}>{skillLabel(skill)}</Typography>
+          <Chip size="small" color="primary" label={xp + ' XP'} sx={{ height: 22, fontWeight: 700 }} />
+        </Button>
+      ))}
+    </Box>
     <Box sx={{ p: 2, border: '1px solid ' + COLORS.border, borderRadius: 3, bgcolor: COLORS.surface }}>
       <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Box><Typography sx={{ fontWeight: 700 }}>{levelTitles[level] ?? 'Novelist'}</Typography><Typography variant="caption" color="text.secondary">Level {level + 1} · {totalXp.toLocaleString()} total XP</Typography></Box><Chip label={'Level ' + (level + 1)} color="primary" size="small" /></Box>
       <LinearProgress variant="determinate" value={progress} sx={{ mt: 1.5, height: 8, borderRadius: 5 }} /><Typography variant="caption" color="text.secondary">{Math.max(0, nextThreshold - totalXp)} XP to next level</Typography>
